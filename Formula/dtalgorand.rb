@@ -3,9 +3,9 @@
 class Dtalgorand < Formula
   desc "Algorand node that keeps the history of every ledger object (time travel)"
   homepage "https://github.com/d13co/dt-algorand"
-  url "https://github.com/d13co/dt-algorand/releases/download/v5.0.4-dt3/dtalgorand_5.0.4-dt3_darwin-arm64.tar.gz"
-  version "5.0.4-dt3"
-  sha256 "3836fbecbec841863f45260f1754fad01e5e60af1e020b35d830df5cde442c9f"
+  url "https://github.com/d13co/dt-algorand/releases/download/v5.0.5-dt1/dtalgorand_5.0.5-dt1_darwin-arm64.tar.gz"
+  version "5.0.5-dt1"
+  sha256 "4310c48520e33629dbb0b5c2221c58aec9456c64604b6d09f28c2dd728424dc9"
   license "AGPL-3.0-or-later"
 
   depends_on arch: :arm64
@@ -18,8 +18,14 @@ class Dtalgorand < Formula
     %w[algocfg algod algoh algokey diagcfg goal kmd].each do |b|
       bin.install_symlink libexec/b => "dt#{b}"
     end
-    bin.install_symlink libexec/"ttimport"
+    bin.install_symlink libexec/"ttimport", libexec/"ttsnap"
+    # share/ttsnap/keys lands in pkgshare/ttsnap/keys, which ttsnap finds from libexec
     pkgshare.install Dir["share/*"]
+    # ttsnap trusts its keys only where no other user can write: whatever the umask, keep them
+    # and the directories above them, up to the keg, writable by their owner alone (the levels
+    # that tools/ttsnap's openOwned checks; a missing one fails the install, as it should)
+    [prefix, share, pkgshare, pkgshare/"ttsnap"].each { |d| d.chmod 0755 }
+    (pkgshare/"ttsnap/keys").chmod 0644
   end
 
   def post_install
@@ -32,16 +38,31 @@ class Dtalgorand < Formula
     # yours to change, so only when missing
     cp pkgshare/"system.json", data unless (data/"system.json").exist?
     cp pkgshare/"genesis/mainnet/genesis.json", data unless (data/"genesis.json").exist?
-    # A node that synced without time travel cannot turn it on later, so a new node starts with it on.
+    # A node that synced without time travel cannot turn it on later, so a new node starts with it
+    # on, and with the asset holders index (kept from round 0 by a sync from genesis or an import;
+    # a snapshot needs ttimport -holders-index, which refuses unless the config sets it).
     synced = data.children.any? { |d| d.directory? && (d/"ledger.block.sqlite").exist? }
-    (data/"config.json").write "{\n    \"EnableTimeTravel\": true\n}\n" if !synced && !(data/"config.json").exist?
+    if !synced && !(data/"config.json").exist?
+      (data/"config.json").write "{\n    \"EnableTimeTravel\": true,\n    \"TimeTravelHoldersIndex\": true\n}\n"
+    end
   end
 
   def caveats
     <<~EOS
       The node's data directory is #{var}/dtalgorand, for mainnet. A new node starts with time
-      travel on (config.json), and syncs from genesis. To keep the history on another disk first:
+      travel and the asset holders index on (config.json), and syncs from genesis (weeks on
+      mainnet). To keep the history on another disk, before the first start:
         dtalgocfg set -d #{var}/dtalgorand -p TimeTravelDBDir -v /Volumes/<disk>/dtalgorand
+
+      To start from a history snapshot instead (about 70 GB on mainnet), before the first start:
+        ttsnap fetch -url https://tt-snapshots-mainnet.d13.co -d #{var}/dtalgorand
+        ttimport -holders-index -d #{var}/dtalgorand
+      then start the node and run
+        ttsnap catchup -d #{var}/dtalgorand
+
+      A sync from genesis keeps the holders index from round 0. After a snapshot,
+      GET /v2/assets/<id>/holders answers 503 until ttimport -holders-index has built it, with
+      the node stopped (about 5 minutes on mainnet).
 
       Start the node, and have it start at login:
         brew services start dtalgorand
@@ -64,6 +85,7 @@ class Dtalgorand < Formula
   end
 
   test do
+    assert_path_exists pkgshare/"ttsnap/keys"
     # algod -v prints <major>.<minor>.<build number>.<channel> on its second line
     assert_match(/^#{Regexp.escape(version.to_s.sub(/-dt.*/, ""))}\./, shell_output("#{bin}/dtalgod -v").lines[1])
   end
