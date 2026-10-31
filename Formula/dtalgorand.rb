@@ -3,9 +3,9 @@
 class Dtalgorand < Formula
   desc "Algorand node that keeps the history of every ledger object (time travel)"
   homepage "https://github.com/d13co/dt-algorand"
-  url "https://github.com/d13co/dt-algorand/releases/download/v5.0.5-dt1/dtalgorand_5.0.5-dt1_darwin-arm64.tar.gz"
-  version "5.0.5-dt1"
-  sha256 "4310c48520e33629dbb0b5c2221c58aec9456c64604b6d09f28c2dd728424dc9"
+  url "https://github.com/d13co/dt-algorand/releases/download/v5.0.5-dt4/dtalgorand_5.0.5-dt4_darwin-arm64.tar.gz"
+  version "5.0.5-dt4"
+  sha256 "9de94b027b9ca100679fb08a7a6c420595a9737ad674530d3df6d979b9eafdd3"
   license "AGPL-3.0-or-later"
 
   depends_on arch: :arm64
