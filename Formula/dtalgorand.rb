@@ -3,9 +3,9 @@
 class Dtalgorand < Formula
   desc "Algorand node that keeps the history of every ledger object (time travel)"
   homepage "https://github.com/d13co/dt-algorand"
-  url "https://github.com/d13co/dt-algorand/releases/download/v5.0.5-dt5/dtalgorand_5.0.5-dt5_darwin-arm64.tar.gz"
-  version "5.0.5-dt5"
-  sha256 "0fcdf2f569e2adac8debab8d55f4b306c75b0fd1b8f96c6b027441e0599fea8d"
+  url "https://github.com/d13co/dt-algorand/releases/download/v5.1.1-dt6/dtalgorand_5.1.1-dt6_darwin-arm64.tar.gz"
+  version "5.1.1-dt6"
+  sha256 "ea0fc309f45357185b6c03c6a2fad9d1a30153335dd7a6b5b721ae6d6d8cffbf"
   license "AGPL-3.0-or-later"
 
   depends_on arch: :arm64
@@ -55,14 +55,14 @@ class Dtalgorand < Formula
         dtalgocfg set -d #{var}/dtalgorand -p TimeTravelDBDir -v /Volumes/<disk>/dtalgorand
 
       To start from a history snapshot instead (about 70 GB on mainnet), before the first start:
-        ttsnap fetch -url https://tt-snapshots-mainnet.d13.co -d #{var}/dtalgorand
-        ttimport -holders-index -d #{var}/dtalgorand
-      then start the node and run
-        ttsnap catchup -d #{var}/dtalgorand
+        ttsnap bootstrap -d #{var}/dtalgorand
+      It downloads the snapshot, builds the asset holders index, starts the service and starts
+      a catchpoint catchup; a rerun picks up where it stopped.
 
-      A sync from genesis keeps the holders index from round 0. After a snapshot,
-      GET /v2/assets/<id>/holders answers 503 until ttimport -holders-index has built it, with
-      the node stopped (about 5 minutes on mainnet).
+      To run dtgoal, dtalgocfg, dtalgod, dtalgoh and dtdiagcfg without -d (ttsnap and ttimport
+      always need it), add the data directory to your shell, then open a new terminal (with
+      bash, write ~/.bash_profile in place of both ~/.zshrc):
+        grep -qs '^export DTALGORAND_DATA=' ~/.zshrc || echo "export DTALGORAND_DATA=#{var}/dtalgorand" >> ~/.zshrc
 
       Start the node, and have it start at login:
         brew services start dtalgorand
